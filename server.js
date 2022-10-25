@@ -2,6 +2,8 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT||3001;
 
+const inputCheck = require('./utils/inputCheck');
+
 //mysql2
 const mysql = require('mysql2');
 
@@ -20,38 +22,89 @@ const db = mysql.createConnection(
 app.use(express.urlencoded({extended:false}));
 app.use(express.json());
 
-/*db.query(`select * from candidates`,(err,rows)=>{
-    console.log(rows);
-})*/
+app.get('/api/candidates',(req,res)=> {
+    const sql = `select * from candidates`;
+
+    db.query(sql, (err,rows)=>{
+        if(err)
+        {
+            res.status(500).json({error: err.message});
+        }
+
+        res.json({
+            message:'success',
+            data: rows
+        });
+    });
+});
 
 //select a candidate
-db.query(`select * from candidates where id =1`,(err,row)=>{
-    if(err){
-        console.log(err);
-    }
-    console.log(row);
+app.get('/api/candidate/:id',(req,res)=>{
+    const sql = `select * from candidates where id = ?`;
+    const params = [req.params.id];
+
+    db.query(sql,params, (err,row)=>{
+        if (err) {
+            res.status(400).json({ error: err.message });
+            return;
+          }
+
+        res.json({
+            message: 'success',
+            data: row
+        });
+    });
 });
 
 //delete a candidate
-/*db.query(`delete from candidates where id = ?`,1,(err,result)=>{
-    if(err){
-        console.log(err);
-    }
-    console.log(result);
-});*/
+app.delete('/api/candidate/:id',(req,res)=>{
+    const sql = `delete from candidates where id =?`;
+    const params = [req.params.id];
+
+    db.query(sql,params, (err,result)=>{
+        if (err) {
+            res.statusMessage(400).json({ error: res.message });
+          } else if (!result.affectedRows) {
+            res.json({
+              message: 'Candidate not found'
+            });
+        }
+        else
+        {
+            res.json({
+                message: 'deleted',
+                changes: result.affectedRows,
+                id: req.params.id
+            });
+        }
+    });
+});
 
 //create a candidate
-const sql = `insert into candidates (id,first_name,last_name,industry_connected)
-values(?,?,?,?)`;
+app.post('/api/candidate',({body},res)=>{
+    const errors = inputCheck(body, 'first_name','last_name','industry_connected');
 
-const params = [1,'Ronald','Firbank',1];
+    if(errors){
+        res.status(400).json({error:errors});
+        return;
+    }
 
-db.query(sql,params, (err,result)=>{
+    const sql = `insert into candidates (first_name,last_name,industry_connected)
+    values(?,?,?)`;
+
+    const params = [body.first_name, body.last_name, body.industry_connected];
+
+    db.query(sql,params, (err,result)=>{
     if (err) {
-        console.log(err);
+        res.send(400).json({error: err.message});
+        return;
       }
-      console.log(result);
-});
+      res.json({
+        message:'success',
+        data: body
+      })
+    });
+})
 
 app.get('/',(req,res)=>{
     res.json({message:"Nope world"});
