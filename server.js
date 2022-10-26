@@ -23,7 +23,11 @@ app.use(express.urlencoded({extended:false}));
 app.use(express.json());
 
 app.get('/api/candidates',(req,res)=> {
-    const sql = `select * from candidates`;
+    const sql = `SELECT candidates.*, parties.name 
+    AS party_name 
+    FROM candidates 
+    LEFT JOIN parties 
+    ON candidates.party_id = parties.id`;
 
     db.query(sql, (err,rows)=>{
         if(err)
@@ -40,7 +44,12 @@ app.get('/api/candidates',(req,res)=> {
 
 //select a candidate
 app.get('/api/candidate/:id',(req,res)=>{
-    const sql = `select * from candidates where id = ?`;
+    const sql = `SELECT candidates.*, parties.name 
+    AS party_name 
+    FROM candidates 
+    LEFT JOIN parties 
+    ON candidates.party_id = parties.id 
+    WHERE candidates.id = ?`;
     const params = [req.params.id];
 
     db.query(sql,params, (err,row)=>{
@@ -104,7 +113,7 @@ app.post('/api/candidate',({body},res)=>{
         data: body
       })
     });
-})
+});
 
 app.get('/',(req,res)=>{
     res.json({message:"Nope world"});
